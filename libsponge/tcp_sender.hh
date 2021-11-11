@@ -7,7 +7,47 @@
 #include "wrapping_integers.hh"
 
 #include <functional>
+#include <list>
 #include <queue>
+
+using namespace std;
+
+/*
+ * Class Name: Timer
+ * Description: Timer is used to track the amount of time has passed since
+ * TCP segment was sent by the TCP sender to the TCP receiver before
+ * receiving an ackno
+ */
+
+class Timer {
+  private:
+    // returns false if timer has run out, initialized to true
+    bool _expired;
+
+    // returns true if the timer has been set, false if it has expired or not yet set
+    // initiaklized to false
+    bool _running;
+
+    // amount of time left in timer
+    size_t timeLeft;
+
+  public:
+    Timer() : _expired(true), _running(false), timeLeft(0) {}
+
+    // starts timer with time "time"
+    void start(size_t time);
+
+    void timePass(size_t time);
+
+    // returns true if timer has run out, false otherwise
+    bool expired() { return _expired; };
+
+    // returns false if timer is not running, initialized to false
+    bool running() { return _running; };
+
+    // stops timer by setting _running to false
+    void stop() { _running = false; };
+};
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -26,11 +66,39 @@ class TCPSender {
     //! retransmission timer for the connection
     unsigned int _initial_retransmission_timeout;
 
+    //! variable holds the current retransmission timer
+    unsigned int rto;
+
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    // sorted list of outstanding segments that have been sent but not necessarily acknowledged
+    list<TCPSegment> outstanding_segments;
+
+    // left and right edges of the window
+    WrappingInt32 l_edge;
+    WrappingInt32 r_edge;
+
+    // adds a TCP segment to our list of outstanding segments
+    void addToOutstanding(TCPSegment seg);
+
+    // constructs a new TCP segment with length "length"
+    TCPSegment construct_TCPSegment(int length);
+
+    // tracks the number of bytes of segments stored in our outstanding segment list
+    uint64_t outstanding;
+
+    // timer used to track whether a segment has timed out
+    Timer t;
+
+    // keeps track of the number of times a segment times out consecutively
+    int consecutive;
+
+    // keeps track of the size of the window
+    size_t windowSize;
 
   public:
     //! Initialize a TCPSender

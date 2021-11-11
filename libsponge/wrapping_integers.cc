@@ -1,12 +1,8 @@
 #include "wrapping_integers.hh"
 
-// Dummy implementation of a 32-bit wrapping integer
-
-// For Lab 2, please replace with a real implementation that passes the
-// automated checks run by `make check_lab2`.
-
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+#include <cmath>
+#include <iostream>
+#include <math.h>
 
 using namespace std;
 
@@ -14,8 +10,8 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    uint32_t wrapped = isn.raw_value() + n;
+    return WrappingInt32(wrapped);
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +25,32 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    // calculate the zero-indexed 32-bit sequence number
+    uint32_t offset = n.raw_value() - isn.raw_value();
+
+    // if checkpoint is less than 2^31, then just return the zero-indexed 32-bit sequence number
+    if (checkpoint < pow(2, 31)) {
+        return offset;
+    }
+
+    // set 32 least significant bits to 0
+    uint64_t unwrapped = (checkpoint >> 32) << 32;
+
+    // add 32-bit sequence number to unwrapped
+    unwrapped += offset;
+    uint64_t power = pow(2, 31);
+
+    // if the difference between unwrapped and checkpoint is more than 2^31
+    // add or subtract 2^32
+    if (unwrapped > checkpoint) {
+        if (unwrapped - checkpoint > power) {
+            unwrapped -= static_cast<uint64_t>(1) << 32;
+        }
+    } else {
+        if (checkpoint - unwrapped > power) {
+            unwrapped += static_cast<uint64_t>(1) << 32;
+        }
+    }
+
+    return unwrapped;
 }

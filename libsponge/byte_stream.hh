@@ -1,3 +1,12 @@
+/*
+ *
+ * Filename: byte_stream.hh
+ * Author: Maggie Gray
+ * Description: This file is the header for ByteStream which allows users
+ * to read and write to/from a bytestream.
+ *
+ * */
+
 #ifndef SPONGE_LIBSPONGE_BYTE_STREAM_HH
 #define SPONGE_LIBSPONGE_BYTE_STREAM_HH
 
@@ -10,18 +19,26 @@
 //! and then no more bytes can be written.
 class ByteStream {
   private:
-    // Your code here -- add private members as necessary.
-
-    // Hint: This doesn't need to be a sophisticated data structure at
-    // all, but if any of your tests are taking longer than a second,
-    // that's a sign that you probably want to keep exploring
-    // different approaches.
 
     bool _error{};  //!< Flag indicating that the stream suffered an error.
 
+    // the number of bytes left that can be written to the bytestream
+    size_t capacityLeft;
+
+    // storage for the writer's input into the bytestream
+    std::string input;
+
+    // checks whether or not the writer has stopped writing
+    bool inputEnded;
+
+    // number of bytes that have been written and read
+    size_t bytesRead;
+    size_t bytesWritten;
+
   public:
     //! Construct a stream with room for `capacity` bytes.
-    ByteStream(const size_t capacity);
+    ByteStream(const size_t capacity)
+        : capacityLeft(capacity), input{""}, inputEnded{false}, bytesRead{0}, bytesWritten{0} {}
 
     //! \name "Input" interface for the writer
     //!@{
