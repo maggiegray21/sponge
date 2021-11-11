@@ -100,6 +100,8 @@ class TCPSender {
     // keeps track of the size of the window
     size_t windowSize;
 
+    void safe_push_segment(TCPSegment seg);
+
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,

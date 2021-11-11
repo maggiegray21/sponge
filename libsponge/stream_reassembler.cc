@@ -146,7 +146,6 @@ void StreamReassembler::protected_write(Unassembled current) {
     // if we have hit the index where we hit EOF and EOF has been pushed, end the output
     if (currentIndex == eofIndex && eofPushed) {
         _output.end_input();
-        cout << "Input ended" << endl;
     }
 }
 
@@ -212,8 +211,6 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     if (eof) {
         eofPushed = true;
         eofIndex = index + data.length();
-        cout << "EOF pushed, EOF index = " << eofIndex << endl;
-        cout << "Current index = " << currentIndex << endl;
     }
 
     // if we have hit the index where we hit EOF, end the output and return

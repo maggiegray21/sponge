@@ -102,13 +102,8 @@ void TCPSender::fill_window() {
     if (windowSize == 0) {
         // construct seg and add to _segments_out and our list of outstanding segments
         TCPSegment seg = construct_TCPSegment(1);
-        _segments_out.push(seg);
-        addToOutstanding(seg);
-
-        // increment _next_seqno and l_edge
-        _next_seqno += seg.length_in_sequence_space();
-        l_edge = l_edge + static_cast<uint32_t>(seg.length_in_sequence_space());
-
+        safe_push_segment(seg);
+        
         // reset timer if needed
         if (t.expired()) {
             t.start(rto);
@@ -132,18 +127,27 @@ void TCPSender::fill_window() {
             }
 
             // add segment to outstanding list and push to TCP Reiver
-            _segments_out.push(seg);
-            addToOutstanding(seg);
-
-            // increment l_edge and _next_seqno
-            l_edge = l_edge + static_cast<uint32_t>(seg.length_in_sequence_space());
-            _next_seqno += seg.length_in_sequence_space();
-
+            safe_push_segment(seg);
+            
             // restart timer if necessary
             if (!t.running()) {
                 t.start(rto);
             }
         }
+    }
+}
+
+void TCPSender::safe_push_segment (TCPSegment seg) {
+    _segments_out.push(seg);
+
+    // if the segment has a payload or SYN/FIN, add it to outstanding and increment
+    // _next_seqno and l_edge
+    if (seg.length_in_sequence_space() > 0) {
+        addToOutstanding(seg);
+
+        // increment _next_seqno and l_edge
+        _next_seqno += seg.length_in_sequence_space();
+        l_edge = l_edge + static_cast<uint32_t>(seg.length_in_sequence_space());
     }
 }
 
@@ -236,13 +240,12 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (t.expired()) {
         // resend oldest segment
         if (!outstanding_segments.empty()) {
-            _segments_out.push(outstanding_segments.front());
-        }
-
-        // if we still have space in our window, increment consecutive and double RTO
-        if (windowSize > 0) {
-            consecutive++;
-            rto = rto * 2;
+            safe_push_segment(outstanding_segments.front());
+            // if we still have space in our window, increment consecutive and double RTO
+            if (windowSize > 0) {
+                consecutive++;
+                rto = rto * 2;
+            }
         }
 
         // restart timer
@@ -255,5 +258,5 @@ unsigned int TCPSender::consecutive_retransmissions() const { return consecutive
 void TCPSender::send_empty_segment() {
     TCPSegment seg;
     seg.header().seqno = wrap(_next_seqno, _isn);
-    _segments_out.push(seg);
+    safe_push_segment(seg);
 }
