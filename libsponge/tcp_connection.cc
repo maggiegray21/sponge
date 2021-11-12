@@ -45,6 +45,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     // if ACK is set, send ackno and window_size to _sender
     if (seg.header().ack) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
+        if ((seg.header().ackno == seg.header().seqno) && seg.header().win == 0) return; 
         safe_fill_window();
     }
 
