@@ -203,7 +203,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         }
     }
 
-    fill_window();
+    //fill_window();
 }
 
 /*
@@ -240,7 +240,8 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (t.expired()) {
         // resend oldest segment
         if (!outstanding_segments.empty()) {
-            safe_push_segment(outstanding_segments.front());
+		_segments_out.push(outstanding_segments.front());
+           // safe_push_segment(outstanding_segments.front());
             // if we still have space in our window, increment consecutive and double RTO
             if (windowSize > 0) {
                 consecutive++;
@@ -256,7 +257,9 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 unsigned int TCPSender::consecutive_retransmissions() const { return consecutive; }
 
 void TCPSender::send_empty_segment() {
+	TCPSegment seg = construct_TCPSegment(0);
+	/*
     TCPSegment seg;
-    seg.header().seqno = wrap(_next_seqno, _isn);
+    seg.header().seqno = wrap(_next_seqno, _isn);*/
     safe_push_segment(seg);
 }
