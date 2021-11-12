@@ -1,9 +1,9 @@
 /*
-* Filename: tcp_connection.cc
-* Author: Maggie Gray (mgray21)
-* Description: This file implements a TCP Connection that connects a TCP Receiver
-* and a TCP Sender.
-*/
+ * Filename: tcp_connection.cc
+ * Author: Maggie Gray (mgray21)
+ * Description: This file implements a TCP Connection that connects a TCP Receiver
+ * and a TCP Sender.
+ */
 
 #include "tcp_connection.hh"
 
@@ -20,18 +20,18 @@ size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_b
 size_t TCPConnection::time_since_last_segment_received() const { return time_since_segment_received; }
 
 /*
-* Function name: segment_received
-* Args: const TCPSegment &seg
-* Description: This function takes in a TCPSegment seg. It sends the segment to 
-* the TCP Receiver _receiver. If ACK is set on the segment, it also sends the ackno
-* and window size to the TCP Sender _sender. Finally, it pushes the segment to 
-* _segments_out.
-*/
+ * Function name: segment_received
+ * Args: const TCPSegment &seg
+ * Description: This function takes in a TCPSegment seg. It sends the segment to
+ * the TCP Receiver _receiver. If ACK is set on the segment, it also sends the ackno
+ * and window size to the TCP Sender _sender. Finally, it pushes the segment to
+ * _segments_out.
+ */
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
-
     // if SYN has not been sent and this segment does not have SYN set, return
-    if (_sender.next_seqno_absolute() == 0 && !seg.header().syn) return;
+    if (_sender.next_seqno_absolute() == 0 && !seg.header().syn)
+        return;
 
     // reset time_since_segment_received
     time_since_segment_received = 0;
@@ -55,13 +55,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     // if ACK is set, send ackno and window_size to _sender
     if (seg.header().ack) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
-        if ((seg.header().ackno == seg.header().seqno) && seg.header().win == 0) return; 
+        if ((seg.header().ackno == seg.header().seqno) && seg.header().win == 0)
+            return;
         safe_fill_window();
     }
 
-    // handles "keep alives" 
-    if (_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0)
-    && seg.header().seqno == _receiver.ackno().value() - 1) {
+    // handles "keep alives"
+    if (_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) &&
+        seg.header().seqno == _receiver.ackno().value() - 1) {
         _sender.send_empty_segment();
     }
 
@@ -74,48 +75,52 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 }
 
 /*
-* Function Name: active()
-* Description: This function returns true if the TCP Connection is still active
-* and false otherwise. We know that the TCP Connection is still active if:
-*   1) the inbound stream is not ended and the _receiver still has unassembled bytes
-*   2) the outbound stream is not at EOF or the FIN segment has not yet been sent
-*   3) there are still bytes in flight
-* If the three prerequisites are false, then active() will return false after
-* lingering for 10 times the initial retransmission timer. If the TCP Connection
-* does not need to linger (the inbound stream ended before the _sender sent FIN) 
-* and the three prerequisites are false, then active() will return false.
-*/
+ * Function Name: active()
+ * Description: This function returns true if the TCP Connection is still active
+ * and false otherwise. We know that the TCP Connection is still active if:
+ *   1) the inbound stream is not ended and the _receiver still has unassembled bytes
+ *   2) the outbound stream is not at EOF or the FIN segment has not yet been sent
+ *   3) there are still bytes in flight
+ * If the three prerequisites are false, then active() will return false after
+ * lingering for 10 times the initial retransmission timer. If the TCP Connection
+ * does not need to linger (the inbound stream ended before the _sender sent FIN)
+ * and the three prerequisites are false, then active() will return false.
+ */
 
 bool TCPConnection::active() const {
-
     // if a segment with RST flag has been sent or received, return false
-    if (reset) return false;
+    if (reset)
+        return false;
 
     // if inbound stream is not ended or there are still unassembled bytes, return true
-    if (!_receiver.stream_out().input_ended() || _receiver.unassembled_bytes() != 0) return true;
+    if (!_receiver.stream_out().input_ended() || _receiver.unassembled_bytes() != 0)
+        return true;
 
     // if outbound stream is not at EOF or FIN has not been sent, return true
-    if (!_sender.stream_in().eof() ||
-        _sender.next_seqno_absolute() != _sender.stream_in().bytes_written() + 2) return true;
+    if (!_sender.stream_in().eof() || _sender.next_seqno_absolute() != _sender.stream_in().bytes_written() + 2)
+        return true;
 
     // if there are still bytes in flight, return true
-    if (_sender.bytes_in_flight() != 0) return true;
+    if (_sender.bytes_in_flight() != 0)
+        return true;
 
     // if the three above conditions are true, and we do not need to linger, return false
-    if (!_linger_after_streams_finish) return false;
+    if (!_linger_after_streams_finish)
+        return false;
 
     // if it has been 10 times the initial retransmission timeout, return false
-    if (time_since_segment_received >= (10 * _cfg.rt_timeout)) return false;
+    if (time_since_segment_received >= (10 * _cfg.rt_timeout))
+        return false;
 
     return true;
 }
 
 /*
-* Function Name: create_segment()
-* Description: This function pops a TCP segment off the _sender's segments_out queue.
-* It sets the ackno and ACK if SYN has been received and sets the window size of
-* the segment.
-*/
+ * Function Name: create_segment()
+ * Description: This function pops a TCP segment off the _sender's segments_out queue.
+ * It sets the ackno and ACK if SYN has been received and sets the window size of
+ * the segment.
+ */
 TCPSegment TCPConnection::create_segment() {
     TCPSegment seg = _sender.segments_out().front();
     _sender.segments_out().pop();
@@ -132,13 +137,14 @@ TCPSegment TCPConnection::create_segment() {
 }
 
 /*
-* Function Name: send_rst()
-* Description: This function sends a segment with the RST flag set and sets
-* both bytestreams to error.
-*/
+ * Function Name: send_rst()
+ * Description: This function sends a segment with the RST flag set and sets
+ * both bytestreams to error.
+ */
 void TCPConnection::send_rst() {
     // create an empty segment with RST = true if there are no segments waiting to be sent
-    if (_sender.segments_out().empty()) _sender.send_empty_segment();
+    if (_sender.segments_out().empty())
+        _sender.send_empty_segment();
     TCPSegment seg = create_segment();
     seg.header().rst = true;
 
@@ -154,12 +160,11 @@ void TCPConnection::send_rst() {
 }
 
 /*
-* Function Name: send_segments()
-* Description: This function sends all the segments pushed by the _sender to 
-* the TCP Connection's queue _segments_out.
-*/
+ * Function Name: send_segments()
+ * Description: This function sends all the segments pushed by the _sender to
+ * the TCP Connection's queue _segments_out.
+ */
 void TCPConnection::send_segments() {
-
     // if the sender has sent too many consecutive retransmissions, send RST
     if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
         send_rst();
@@ -181,11 +186,11 @@ void TCPConnection::safe_fill_window() {
 }
 
 /*
-* Function Name: write
-* Args: const string &data
-* Description: This function writes a string to the _sender's Byte Stream and then
-* sends the TCP Segments created by the _sender to _segments_out.
-*/
+ * Function Name: write
+ * Args: const string &data
+ * Description: This function writes a string to the _sender's Byte Stream and then
+ * sends the TCP Segments created by the _sender to _segments_out.
+ */
 size_t TCPConnection::write(const string &data) {
     size_t numWritten = _sender.stream_in().write(data);
     safe_fill_window();
@@ -193,7 +198,7 @@ size_t TCPConnection::write(const string &data) {
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
-void TCPConnection::tick(const size_t ms_since_last_tick) { 
+void TCPConnection::tick(const size_t ms_since_last_tick) {
     // tells _sender that time has passed
     _sender.tick(ms_since_last_tick);
     send_segments();

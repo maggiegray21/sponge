@@ -103,7 +103,7 @@ void TCPSender::fill_window() {
         // construct seg and add to _segments_out and our list of outstanding segments
         TCPSegment seg = construct_TCPSegment(1);
         safe_push_segment(seg);
-        
+
         // reset timer if needed
         if (t.expired()) {
             t.start(rto);
@@ -128,7 +128,7 @@ void TCPSender::fill_window() {
 
             // add segment to outstanding list and push to TCP Reiver
             safe_push_segment(seg);
-            
+
             // restart timer if necessary
             if (!t.running()) {
                 t.start(rto);
@@ -140,7 +140,7 @@ void TCPSender::fill_window() {
 // this function pushes TCP Segments to _segments_out, and, if they occupy length
 // in sequence space, then it adds them to the list of outstanding segments
 // and increments _next_seqno and l_edge
-void TCPSender::safe_push_segment (TCPSegment seg) {
+void TCPSender::safe_push_segment(TCPSegment seg) {
     _segments_out.push(seg);
 
     // if the segment has a payload or SYN/FIN, add it to outstanding and increment
@@ -241,7 +241,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (t.expired()) {
         // resend oldest segment
         if (!outstanding_segments.empty()) {
-		_segments_out.push(outstanding_segments.front());
+            _segments_out.push(outstanding_segments.front());
             // if we still have space in our window, increment consecutive and double RTO
             if (windowSize > 0) {
                 consecutive++;
@@ -257,6 +257,6 @@ unsigned int TCPSender::consecutive_retransmissions() const { return consecutive
 
 // this function sends an empty segment
 void TCPSender::send_empty_segment() {
-	TCPSegment seg = construct_TCPSegment(0);
+    TCPSegment seg = construct_TCPSegment(0);
     safe_push_segment(seg);
 }

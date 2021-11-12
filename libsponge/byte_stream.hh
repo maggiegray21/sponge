@@ -19,7 +19,6 @@
 //! and then no more bytes can be written.
 class ByteStream {
   private:
-
     bool _error{};  //!< Flag indicating that the stream suffered an error.
 
     // the number of bytes left that can be written to the bytestream

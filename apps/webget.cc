@@ -35,7 +35,7 @@ void get_URL(const string &host, const string &path) {
     // the "eof" (end of file).
 
     // create a socket
-    //TCPSocket sock;
+    // TCPSocket sock;
     CS144TCPSocket sock;
 
     // connect that socket to the host using HTTP
