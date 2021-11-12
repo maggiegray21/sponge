@@ -1,3 +1,12 @@
+/*
+ *
+ * Filename: webget.cc
+ * Author: Maggie Gray
+ * Description: This file implements the get_URL function which allows the
+ * user to fetch Web pages over the Internet.
+ *
+ * */
+
 #include "socket.hh"
 #include "util.hh"
 
@@ -6,9 +15,16 @@
 
 using namespace std;
 
+/*
+ *
+ * Function Name: get_URL
+ * Args: const string &host, const string &path
+ * Description: This function takes a host server and a path and
+ * connects the user to that server and requests the URL path from
+ * that server using HTTP. It then prints out the server's response.
+ *
+ * */
 void get_URL(const string &host, const string &path) {
-    // Your code here.
-
     // You will need to connect to the "http" service on
     // the computer whose name is in the "host" string,
     // then request the URL path given in the "path" string.
@@ -17,8 +33,24 @@ void get_URL(const string &host, const string &path) {
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
 
-    cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
-    cerr << "Warning: get_URL() has not been implemented yet.\n";
+    // create a socket
+    TCPSocket sock;
+
+    // connect that socket to the host using HTTP
+    sock.connect(Address(host, "http"));
+
+    // request the URL path
+    sock.write("GET ");
+    sock.write(path);
+    sock.write(" HTTP/1.1\r\nHost: ");
+    sock.write(host);
+    sock.write("\r\nConnection: close\r\n\r\n");
+
+    // read and print the server's response until EOF
+    while (!sock.eof()) {
+        auto recvd = sock.read();
+        cout << recvd;
+    }
 }
 
 int main(int argc, char *argv[]) {
