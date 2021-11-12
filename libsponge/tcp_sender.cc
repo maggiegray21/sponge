@@ -137,6 +137,9 @@ void TCPSender::fill_window() {
     }
 }
 
+// this function pushes TCP Segments to _segments_out, and, if they occupy length
+// in sequence space, then it adds them to the list of outstanding segments
+// and increments _next_seqno and l_edge
 void TCPSender::safe_push_segment (TCPSegment seg) {
     _segments_out.push(seg);
 
@@ -202,8 +205,6 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             t.stop();
         }
     }
-
-    //fill_window();
 }
 
 /*
@@ -241,14 +242,12 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         // resend oldest segment
         if (!outstanding_segments.empty()) {
 		_segments_out.push(outstanding_segments.front());
-           // safe_push_segment(outstanding_segments.front());
             // if we still have space in our window, increment consecutive and double RTO
             if (windowSize > 0) {
                 consecutive++;
                 rto = rto * 2;
             }
         }
-
         // restart timer
         t.start(rto);
     }
@@ -256,6 +255,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 
 unsigned int TCPSender::consecutive_retransmissions() const { return consecutive; }
 
+// this function sends an empty segment
 void TCPSender::send_empty_segment() {
 	TCPSegment seg = construct_TCPSegment(0);
     safe_push_segment(seg);

@@ -1,14 +1,13 @@
+/*
+* Filename: tcp_connection.cc
+* Author: Maggie Gray (mgray21)
+* Description: This file implements a TCP Connection that connects a TCP Receiver
+* and a TCP Sender.
+*/
+
 #include "tcp_connection.hh"
 
 #include <iostream>
-
-// Dummy implementation of a TCP connection
-
-// For Lab 4, please replace with a real implementation that passes the
-// automated checks run by `make check`.
-
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
@@ -19,6 +18,15 @@ size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight()
 size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }
 
 size_t TCPConnection::time_since_last_segment_received() const { return time_since_segment_received; }
+
+/*
+* Function name: segment_received
+* Args: const TCPSegment &seg
+* Description: This function takes in a TCPSegment seg. It sends the segment to 
+* the TCP Receiver _receiver. If ACK is set on the segment, it also sends the ackno
+* and window size to the TCP Sender _sender. Finally, it pushes the segment to 
+* _segments_out.
+*/
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
 
@@ -38,6 +46,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     // sends segment to receiver
     _receiver.segment_received(seg);
 
+    // if the inbound stream ends before the outbound stream is at EOF
+    // we do not need to linger after streams finish
     if (_receiver.stream_out().input_ended() && !_sender.stream_in().eof()) {
         _linger_after_streams_finish = false;
     }
@@ -63,6 +73,19 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     send_segments();
 }
 
+/*
+* Function Name: active()
+* Description: This function returns true if the TCP Connection is still active
+* and false otherwise. We know that the TCP Connection is still active if:
+*   1) the inbound stream is not ended and the _receiver still has unassembled bytes
+*   2) the outbound stream is not at EOF or the FIN segment has not yet been sent
+*   3) there are still bytes in flight
+* If the three prerequisites are false, then active() will return false after
+* lingering for 10 times the initial retransmission timer. If the TCP Connection
+* does not need to linger (the inbound stream ended before the _sender sent FIN) 
+* and the three prerequisites are false, then active() will return false.
+*/
+
 bool TCPConnection::active() const {
 
     // if a segment with RST flag has been sent or received, return false
@@ -85,9 +108,14 @@ bool TCPConnection::active() const {
     if (time_since_segment_received >= (10 * _cfg.rt_timeout)) return false;
 
     return true;
-
 }
 
+/*
+* Function Name: create_segment()
+* Description: This function pops a TCP segment off the _sender's segments_out queue.
+* It sets the ackno and ACK if SYN has been received and sets the window size of
+* the segment.
+*/
 TCPSegment TCPConnection::create_segment() {
     TCPSegment seg = _sender.segments_out().front();
     _sender.segments_out().pop();
@@ -103,11 +131,18 @@ TCPSegment TCPConnection::create_segment() {
     return seg;
 }
 
+/*
+* Function Name: send_rst()
+* Description: This function sends a segment with the RST flag set and sets
+* both bytestreams to error.
+*/
 void TCPConnection::send_rst() {
     // create an empty segment with RST = true if there are no segments waiting to be sent
     if (_sender.segments_out().empty()) _sender.send_empty_segment();
     TCPSegment seg = create_segment();
     seg.header().rst = true;
+
+    // push seg to _segments_out
     _segments_out.push(seg);
 
     // set both byte streams to error
@@ -118,25 +153,40 @@ void TCPConnection::send_rst() {
     reset = true;
 }
 
+/*
+* Function Name: send_segments()
+* Description: This function sends all the segments pushed by the _sender to 
+* the TCP Connection's queue _segments_out.
+*/
 void TCPConnection::send_segments() {
+
+    // if the sender has sent too many consecutive retransmissions, send RST
     if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
         send_rst();
     }
 
+    // push all segments from the _sender's segments_out queue to _segments_out
+    // with proper ackno and window_size
     while (!_sender.segments_out().empty()) {
         TCPSegment seg = create_segment();
         _segments_out.push(seg);
     }
 }
 
+// ensures that every time the _sender fills its window, the TCP Connection
+// sends its segments to _segments_out
 void TCPConnection::safe_fill_window() {
     _sender.fill_window();
     send_segments();
 }
 
-
+/*
+* Function Name: write
+* Args: const string &data
+* Description: This function writes a string to the _sender's Byte Stream and then
+* sends the TCP Segments created by the _sender to _segments_out.
+*/
 size_t TCPConnection::write(const string &data) {
-    // send the _sender data to put into TCP segments
     size_t numWritten = _sender.stream_in().write(data);
     safe_fill_window();
     return numWritten;
@@ -158,6 +208,7 @@ void TCPConnection::end_input_stream() {
     safe_fill_window();
 }
 
+// starts the TCP Connection by sending an empty segment with SYN flag set
 void TCPConnection::connect() {
     // _sender's window size is initialized to 1, so calling fill_window() will
     // cause _sender to send an empty segment with SYN flag set
