@@ -5,17 +5,6 @@
 
 #include <iostream>
 
-// Dummy implementation of a network interface
-// Translates from {IP datagram, next hop address} to link-layer frame, and from link-layer frame to IP datagram
-
-// For Lab 5, please replace with a real implementation that passes the
-// automated checks run by `make check_lab5`.
-
-// You will need to add private members to the class declaration in `network_interface.hh`
-
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
-
 using namespace std;
 
 //! \param[in] ethernet_address Ethernet (what ARP calls "hardware") address of the interface
@@ -160,7 +149,24 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) { 
 
-    // check if anything in mapping has been remembered for 30 seconds
-    // update requests in past 5 seconds
+    //queue<Address> to_remove; --> IF HAVING TROUBLE (LIKE SEG FAULTS), USE TO_REMOVE QUEUE
+    // INSTEAD OF REMOVING INSIDE OF FOR LOOP
 
+    // if IP Address to Ethernet address has been cached longer than 30 seconds, remove it
+    // otherwise decrement TTL
+    for (auto it = IP_to_Ethernet.begin(); it != IP_to_Ethernet.end(); it++) {
+        if (it->second.second <= ms_since_last_tick) {
+            //to_remove.push(it->first);
+            IP_to_Ethernet.erase(it);
+        } else {
+            it->second.second -= ms_since_last_tick;
+        }
+    }
+
+    // keep track of ms since ARP request sent for each IP address
+    for (auto it = dgrams_to_send.begin(); it != dgrams_to_send.end(); it++) {
+        if (it->second.second < 5) {
+            it->second.second += ms_since_last_tick;
+        }
+    }
 }
