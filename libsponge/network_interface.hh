@@ -4,9 +4,13 @@
 #include "ethernet_frame.hh"
 #include "tcp_over_ip.hh"
 #include "tun.hh"
+#include "arp_message.hh"
+#include "ethernet_header.hh"
 
 #include <optional>
 #include <queue>
+#include <map>
+#include <utility>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -41,16 +45,22 @@ class NetworkInterface {
     std::queue<EthernetFrame> _frames_out{};
 
     // map from IP addresses to <queue<dgram>, timer>
-    std::map<Address, pair<std::queue<InternetDatagram>, size_t>> dgrams_to_send;
+    std::map<uint32_t, std::pair<std::queue<InternetDatagram>, size_t>> dgrams_to_send{};
 
     // map IP addresses to <Ethernet address, timer>
-    std::map<Address, pair<EthernetAddress, size_t>> IP_to_Ethernet;
+    std::map<uint32_t, std::pair<EthernetAddress, size_t>> IP_to_Ethernet{};
 
-    EthernetFrame create_frame(BufferList payload, const Address next_hop);
+    EthernetFrame create_frame(BufferList payload, EthernetAddress addr);
 
-    void send_ARP_request(const Address next_hop, uint16_t opcode);
+    void send_ARP_message(uint32_t next_hop, uint16_t opcode);
 
-    void send_queued_datagrams(Address addr);
+    void send_queued_datagrams(uint32_t addr);
+
+    uint16_t OPCODE_REPLY = 2;
+    uint16_t OPCODE_REQUEST = 1;
+
+    size_t CACHE_TTL = 30000; // ms
+    size_t ARP_REQUEST_TIMEOUT = 5000; // ms
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
