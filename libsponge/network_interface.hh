@@ -40,6 +40,16 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
+    // map from IP addresses to <queue<dgram>, timer>
+    std::map<Address, pair<std::queue<InternetDatagram>, size_t>> dgrams_to_send;
+
+    // map IP addresses to <Ethernet address, timer>
+    std::map<Address, pair<EthernetAddress, size_t>> IP_to_Ethernet;
+
+    EthernetFrame create_frame(BufferList payload, const Address next_hop);
+
+    void send_ARP_request(const Address next_hop, uint16_t opcode);
+
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
