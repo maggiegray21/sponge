@@ -42,15 +42,13 @@ void NetworkInterface::send_ARP_message(const Address next_hop, uint16_t opcode)
     arp.sender_ethernet_address = _ethernet_address;
     arp.sender_ip_address = _ip_address;
     arp.target_ip_address = next_hop.ipv4_numeric;
-    /*
-    // fill in arp_message.target_ethernet_address if it is a reply
-    if (opcode == 2) {
-
+    EthernetFrame frame;
+    if (opcode == OPCODE_REPLY) {
+        arp_message.target_ethernet_address = IP_to_Ethernet[next_hop];
+        frame = create_frame(arp.serialize(), IP_to_Ethernet[next_hop]);
+    } else {
+        frame = create_frame(arp.serialize(), ETHERNET_BROADCAST);
     }
-    */
-
-    // put ARP message into ethernet frame and send it
-    EthernetFrame frame = create_frame(arp.serialize(), ETHERNET_BROADCAST);
     _frames_out.push(frame);
     
 }
@@ -73,10 +71,10 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
         auto it = dgrams_to_send.find(next_hop);
         if (it == dgrams_to_send.end()) {
             dgrams_to_send[next_hop].second = 0;
-            send_ARP_request(next_hop, 1);
-        } else if (dgrams_to_send[next_hop].second > 5) {
+            send_ARP_request(next_hop, OPCODE_REQUEST);
+        } else if (dgrams_to_send[next_hop].second > 5 * 1000) {
             dgrams_to_send[next_hop].second = 0;
-            send_ARP_request(next_hop, 1);
+            send_ARP_request(next_hop, OPCODE_REQUEST);
         }
         // add dgram to list of d_grams_to_send to IP Address next_hop
         dgrams_to_send[next_hop].first.push(dgram);
@@ -95,10 +93,57 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 
 }
 
+void NetworkInterface::send_queued_datagrams(Address addr) {
+    // queue of datagrams that need to be sent to IP Address addr
+    queue<InternetDatagram> to_send = dgrams_to_send[addr].first;
+
+    // ethernet address associated with IP address addr
+    EthernetAddress eth = IP_to_Ethernet[addr].first;
+
+    // send all dgrams in queue
+    while (!to_send.empty()) {
+        EthernetFrame frame = create_frame(to_send.front().serialize(), eth);
+        _frames_out(frame);
+        to_send.pop();
+    }
+
+    // remove entry from map
+    dgrams_to_send.erase(addr);
+}
+
 //! \param[in] frame the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
 
     // ignore any frames not destined for the network interface
+    if (frame.dst != _ethernet_address) return;
+
+    // if the frame contains an IPv4 datagram in its payload, parse it and return the datagram
+    if (frame.type = TYPE_IPv4) {
+        InternetDatagram dgram;
+        if (dgram.parse(frame.payload()) == ParseResult::NoError) {
+            return dgram;
+        }
+    }
+
+    // if the frame contains an ARP message in its payload, parse it, 
+    // cache sender's IP address and Ethernet address, send any queued datagrams
+    // reply if needed
+    if (frame.type = TYPE_ARP) {
+        ARPMessage arp;
+        if (arp.parse(frame.payload() != ParseResult::NoError)) {
+            return;
+        }
+        // map sender IP address to sender Ethernet address with TTL 30 seconds
+        IP_to_Ethernet[arp.sender_ip_address] = (arp.sender_ethernet_address, 30 * 1000);
+
+        // send any datagrams that were waiting to learn the ethernet address
+        send_queued_datagrams(arp.sender_ip_address);
+
+        // reply if necessary
+        if (arp.opcode == OPCODE_REQUEST) {
+            send_ARP_message(arp.sender_ip_address, OPCODE_REPLY);
+        } 
+    }
 
     // if frame is IPv4
         // parse as IPv4
@@ -110,8 +155,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         // if ARP request asks for our IP address:
             // send ARP reply
 
-    DUMMY_CODE(frame);
-    return {};
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method

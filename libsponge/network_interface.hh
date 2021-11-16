@@ -50,6 +50,8 @@ class NetworkInterface {
 
     void send_ARP_request(const Address next_hop, uint16_t opcode);
 
+    void send_queued_datagrams(Address addr);
+
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
