@@ -36,7 +36,7 @@ void get_URL(const string &host, const string &path) {
 
     // create a socket
     // TCPSocket sock;
-    CS144TCPSocket sock;
+    FullStackSocket sock;
 
     // connect that socket to the host using HTTP
     sock.connect(Address(host, "http"));

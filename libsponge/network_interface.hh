@@ -50,7 +50,7 @@ class NetworkInterface {
     // map IP addresses to <Ethernet address, timer>
     std::map<uint32_t, std::pair<EthernetAddress, size_t>> IP_to_Ethernet{};
 
-    EthernetFrame create_frame(BufferList payload, EthernetAddress addr);
+    EthernetFrame create_frame(BufferList payload, EthernetAddress addr, uint16_t type);
 
     void send_ARP_message(uint32_t next_hop, uint16_t opcode);
 
