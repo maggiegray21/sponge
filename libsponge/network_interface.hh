@@ -1,3 +1,9 @@
+/*
+* File Name: network_interface.hh
+* Author: Maggie Gray (mgray21)
+* Description: Header file for network_interface.cc which implements a network interface.
+*/
+
 #ifndef SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 #define SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 
@@ -44,23 +50,30 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
-    // map from IP addresses to <queue<dgram>, timer>
+    // map from IP addresses to queue of datagrams and amount of time since ARP request asking about that IP address
     std::map<uint32_t, std::pair<std::queue<InternetDatagram>, size_t>> dgrams_to_send{};
 
-    // map IP addresses to <Ethernet address, timer>
+    // map from IP addresses to Ethernet addresses and amount of time the value has been cached
     std::map<uint32_t, std::pair<EthernetAddress, size_t>> IP_to_Ethernet{};
 
+    // creates an EthernetFrame
     EthernetFrame create_frame(BufferList payload, EthernetAddress addr, uint16_t type);
 
+    // sends an ARP message asking about next_hop
     void send_ARP_message(uint32_t next_hop, uint16_t opcode);
 
+    // after learning the ethernet address connected to an IP address, 
+    // sends all datagrams waiting to go to that IP address
     void send_queued_datagrams(uint32_t addr);
 
+    // global variables that hold the values for ARP message opcodes
     uint16_t OPCODE_REPLY = 2;
     uint16_t OPCODE_REQUEST = 1;
 
-    size_t CACHE_TTL = 30000; // ms
-    size_t ARP_REQUEST_TIMEOUT = 5000; // ms
+    // global variables that hold "time out" times for the time to remember a cached Ethernet address
+    // to IP mapping and the amount of time to wait to send a new ARP request
+    size_t CACHE_TTL = 30000; // 30 seconds
+    size_t ARP_REQUEST_TIMEOUT = 5000; // 5 seconds
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

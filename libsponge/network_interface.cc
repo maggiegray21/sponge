@@ -1,3 +1,10 @@
+/*
+* File Name: network_interface.cc
+* Author: Maggie Gray (mgray21)
+* Description: This file implements a network interface to be used by a router to send and receive
+* datagrams.
+*/
+
 #include "network_interface.hh"
 
 #include "arp_message.hh"
@@ -16,6 +23,14 @@ NetworkInterface::NetworkInterface(const EthernetAddress &ethernet_address, cons
          << ip_address.ip() << "\n";
 }
 
+/*
+* Function Name: create_frame
+* Args: BufferList payload (payload of frame), EthernetAddress addr (destination of frame)
+* uint16_t type (type of frame)
+* Description: This function takes in a payload, a destination EthernetAddress, and a type of 
+* EthernetFrame and creates an EthernetFrame with that payload, destination, and type
+* with the host network interface as the source. It hten returns the EthernetFrame it creates.
+*/
 EthernetFrame NetworkInterface::create_frame(BufferList payload, EthernetAddress addr, uint16_t type) {
     EthernetFrame frame;
     frame.header().type = type;
@@ -25,6 +40,11 @@ EthernetFrame NetworkInterface::create_frame(BufferList payload, EthernetAddress
     return frame;
 }
 
+/*
+* Function Name: send_ARP_message
+* Args: uint32_t next_hop (target IP address), uint16_t opcode (message's opcode)
+* Description: Sends an ARP message to next_hop.
+*/
 void NetworkInterface::send_ARP_message(uint32_t next_hop, uint16_t opcode) {
     // create ARP message
     ARPMessage arp;
@@ -33,6 +53,8 @@ void NetworkInterface::send_ARP_message(uint32_t next_hop, uint16_t opcode) {
     arp.sender_ip_address = _ip_address.ipv4_numeric();
     arp.target_ip_address = next_hop;
     EthernetFrame frame;
+    
+    // if the ARP message is a reply, set the target's ethernet address
     if (opcode == OPCODE_REPLY) {
         arp.target_ethernet_address = IP_to_Ethernet[next_hop].first;
         frame = create_frame(arp.serialize(), IP_to_Ethernet[next_hop].first, EthernetHeader::TYPE_ARP);
@@ -49,14 +71,17 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     // convert IP address of next hop to raw 32-bit representation (used in ARP header)
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
 
-    // if we already know the Ethernet address of the next hop
+    // if we already know the Ethernet address of the next hop, create and send a frame to the next hop
     auto it1 = IP_to_Ethernet.find(next_hop_ip);
     if (it1 != IP_to_Ethernet.end()) {
         EthernetFrame frame = create_frame(dgram.serialize(), IP_to_Ethernet[next_hop_ip].first, EthernetHeader::TYPE_IPv4);
         _frames_out.push(frame);
-    } else {
+    } 
+    
+    // otherwise, send an ARP request to find the Ethernet address of the next hop
+    else {
         queue<InternetDatagram> empty;
-        // if ARP request asking about next_hop has not been sent in past 5 seconds
+        // if no ARP request asking about next_hop has been sent in the past 5 seconds
         // reset the number of seconds since ARP request sent to 0 and send ARP request
         auto it2 = dgrams_to_send.find(next_hop_ip);
         if (it2 == dgrams_to_send.end()) {
@@ -68,10 +93,15 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
         }
         // add dgram to list of d_grams_to_send to IP Address next_hop
         dgrams_to_send[next_hop_ip].first.push(dgram);
-        auto it3 = dgrams_to_send.find(next_hop_ip);
     }
 }
 
+/*
+* Function Name: send_queued_datagrams
+* Args: uint32_t addr (IP address to send datagrams to)
+* Description: After an ARP message has been received and the ethernet address of an IP address is learned,
+* this function sends all datagrams waiting to go to that IP address to that address.
+*/
 void NetworkInterface::send_queued_datagrams(uint32_t addr) {
     // queue of datagrams that need to be sent to IP Address addr
     queue<InternetDatagram> to_send = dgrams_to_send[addr].first;
@@ -79,7 +109,7 @@ void NetworkInterface::send_queued_datagrams(uint32_t addr) {
     // ethernet address associated with IP address addr
     EthernetAddress eth = IP_to_Ethernet[addr].first;
 
-    // send all dgrams in queue
+    // send all dgrams in queue waiting to go to eth
     while (!to_send.empty()) {
         EthernetFrame frame = create_frame(to_send.front().serialize(), eth, EthernetHeader::TYPE_IPv4);
         _frames_out.push(frame);
@@ -110,6 +140,8 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
     // reply if needed
     if (frame.header().type == EthernetHeader::TYPE_ARP) {
         ARPMessage arp;
+
+        // if message did not parse correctly, return
         if (arp.parse(frame.payload()) != ParseResult::NoError) {
             return {};
         }
