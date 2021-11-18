@@ -1,9 +1,9 @@
 /*
-* File Name: network_interface.cc
-* Author: Maggie Gray (mgray21)
-* Description: This file implements a network interface to be used by a router to send and receive
-* datagrams.
-*/
+ * File Name: network_interface.cc
+ * Author: Maggie Gray (mgray21)
+ * Description: This file implements a network interface to be used by a router to send and receive
+ * datagrams.
+ */
 
 #include "network_interface.hh"
 
@@ -24,27 +24,27 @@ NetworkInterface::NetworkInterface(const EthernetAddress &ethernet_address, cons
 }
 
 /*
-* Function Name: create_frame
-* Args: BufferList payload (payload of frame), EthernetAddress addr (destination of frame)
-* uint16_t type (type of frame)
-* Description: This function takes in a payload, a destination EthernetAddress, and a type of 
-* EthernetFrame and creates an EthernetFrame with that payload, destination, and type
-* with the host network interface as the source. It hten returns the EthernetFrame it creates.
-*/
+ * Function Name: create_frame
+ * Args: BufferList payload (payload of frame), EthernetAddress addr (destination of frame)
+ * uint16_t type (type of frame)
+ * Description: This function takes in a payload, a destination EthernetAddress, and a type of
+ * EthernetFrame and creates an EthernetFrame with that payload, destination, and type
+ * with the host network interface as the source. It hten returns the EthernetFrame it creates.
+ */
 EthernetFrame NetworkInterface::create_frame(BufferList payload, EthernetAddress addr, uint16_t type) {
     EthernetFrame frame;
     frame.header().type = type;
-    frame.header().dst = addr; 
+    frame.header().dst = addr;
     frame.header().src = _ethernet_address;
     frame.payload() = payload;
     return frame;
 }
 
 /*
-* Function Name: send_ARP_message
-* Args: uint32_t next_hop (target IP address), uint16_t opcode (message's opcode)
-* Description: Sends an ARP message to next_hop.
-*/
+ * Function Name: send_ARP_message
+ * Args: uint32_t next_hop (target IP address), uint16_t opcode (message's opcode)
+ * Description: Sends an ARP message to next_hop.
+ */
 void NetworkInterface::send_ARP_message(uint32_t next_hop, uint16_t opcode) {
     // create ARP message
     ARPMessage arp;
@@ -53,7 +53,7 @@ void NetworkInterface::send_ARP_message(uint32_t next_hop, uint16_t opcode) {
     arp.sender_ip_address = _ip_address.ipv4_numeric();
     arp.target_ip_address = next_hop;
     EthernetFrame frame;
-    
+
     // if the ARP message is a reply, set the target's ethernet address
     if (opcode == OPCODE_REPLY) {
         arp.target_ethernet_address = IP_to_Ethernet[next_hop].first;
@@ -74,10 +74,11 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     // if we already know the Ethernet address of the next hop, create and send a frame to the next hop
     auto it1 = IP_to_Ethernet.find(next_hop_ip);
     if (it1 != IP_to_Ethernet.end()) {
-        EthernetFrame frame = create_frame(dgram.serialize(), IP_to_Ethernet[next_hop_ip].first, EthernetHeader::TYPE_IPv4);
+        EthernetFrame frame =
+            create_frame(dgram.serialize(), IP_to_Ethernet[next_hop_ip].first, EthernetHeader::TYPE_IPv4);
         _frames_out.push(frame);
-    } 
-    
+    }
+
     // otherwise, send an ARP request to find the Ethernet address of the next hop
     else {
         queue<InternetDatagram> empty;
@@ -97,11 +98,11 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 }
 
 /*
-* Function Name: send_queued_datagrams
-* Args: uint32_t addr (IP address to send datagrams to)
-* Description: After an ARP message has been received and the ethernet address of an IP address is learned,
-* this function sends all datagrams waiting to go to that IP address to that address.
-*/
+ * Function Name: send_queued_datagrams
+ * Args: uint32_t addr (IP address to send datagrams to)
+ * Description: After an ARP message has been received and the ethernet address of an IP address is learned,
+ * this function sends all datagrams waiting to go to that IP address to that address.
+ */
 void NetworkInterface::send_queued_datagrams(uint32_t addr) {
     // queue of datagrams that need to be sent to IP Address addr
     queue<InternetDatagram> to_send = dgrams_to_send[addr].first;
@@ -122,10 +123,9 @@ void NetworkInterface::send_queued_datagrams(uint32_t addr) {
 
 //! \param[in] frame the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
-
     // ignore any frames not destined for the network interface
-    if (frame.header().dst != _ethernet_address && 
-        frame.header().dst != ETHERNET_BROADCAST) return {};
+    if (frame.header().dst != _ethernet_address && frame.header().dst != ETHERNET_BROADCAST)
+        return {};
 
     // if the frame contains an IPv4 datagram in its payload, parse it and return the datagram
     if (frame.header().type == EthernetHeader::TYPE_IPv4) {
@@ -135,7 +135,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         }
     }
 
-    // if the frame contains an ARP message in its payload, parse it, 
+    // if the frame contains an ARP message in its payload, parse it,
     // cache sender's IP address and Ethernet address, send any queued datagrams
     // reply if needed
     if (frame.header().type == EthernetHeader::TYPE_ARP) {
@@ -154,15 +154,15 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         // reply if necessary
         if (arp.opcode == OPCODE_REQUEST && arp.target_ip_address == _ip_address.ipv4_numeric()) {
             send_ARP_message(arp.sender_ip_address, OPCODE_REPLY);
-        } 
+        }
     }
     return {};
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void NetworkInterface::tick(const size_t ms_since_last_tick) { 
+void NetworkInterface::tick(const size_t ms_since_last_tick) {
     // stores IP addresses to remove from the map
-    queue<uint32_t> to_remove; 
+    queue<uint32_t> to_remove;
 
     // if IP Address to Ethernet address has been cached longer than 30 seconds, remove it
     // otherwise decrement TTL

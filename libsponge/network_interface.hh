@@ -1,21 +1,21 @@
 /*
-* File Name: network_interface.hh
-* Author: Maggie Gray (mgray21)
-* Description: Header file for network_interface.cc which implements a network interface.
-*/
+ * File Name: network_interface.hh
+ * Author: Maggie Gray (mgray21)
+ * Description: Header file for network_interface.cc which implements a network interface.
+ */
 
 #ifndef SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 #define SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
+#include "ethernet_header.hh"
 #include "tcp_over_ip.hh"
 #include "tun.hh"
-#include "arp_message.hh"
-#include "ethernet_header.hh"
 
+#include <map>
 #include <optional>
 #include <queue>
-#include <map>
 #include <utility>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
@@ -62,7 +62,7 @@ class NetworkInterface {
     // sends an ARP message asking about next_hop
     void send_ARP_message(uint32_t next_hop, uint16_t opcode);
 
-    // after learning the ethernet address connected to an IP address, 
+    // after learning the ethernet address connected to an IP address,
     // sends all datagrams waiting to go to that IP address
     void send_queued_datagrams(uint32_t addr);
 
@@ -72,8 +72,8 @@ class NetworkInterface {
 
     // global variables that hold "time out" times for the time to remember a cached Ethernet address
     // to IP mapping and the amount of time to wait to send a new ARP request
-    size_t CACHE_TTL = 30000; // 30 seconds
-    size_t ARP_REQUEST_TIMEOUT = 5000; // 5 seconds
+    size_t CACHE_TTL = 30000;           // 30 seconds
+    size_t ARP_REQUEST_TIMEOUT = 5000;  // 5 seconds
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
