@@ -6,6 +6,18 @@
 #include <optional>
 #include <queue>
 
+class Route {
+    public: 
+        uint32_t _prefix;
+        uint8_t _prefix_length;
+        std::optional<Address> _next_hop;
+        size_t _interface_num;
+        Route(uint32_t route_prefix, uint8_t prefix_length, 
+              std::optional<Address> next_hop, size_t interface_num): 
+              _prefix(route_prefix), _prefix_length(prefix_length), _next_hop(next_hop), 
+              _interface_num(interface_num) {}
+};
+
 //! \brief A wrapper for NetworkInterface that makes the host-side
 //! interface asynchronous: instead of returning received datagrams
 //! immediately (from the `recv_frame` method), it stores them for
@@ -48,6 +60,10 @@ class Router {
     //! as specified by the route with the longest prefix_length that matches the
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
+
+    std::vector<Route> routing_table{};
+
+    uint32_t get_prefix(uint32_t route_prefix, uint8_t prefix_length);
 
   public:
     //! Add an interface to the router

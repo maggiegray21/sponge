@@ -29,14 +29,56 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-    // Your code here.
+    Route r(get_prefix(route_prefix, prefix_length), prefix_length, next_hop, interface_num);
+    /*
+    r.prefix = get_prefix(route_prefix, prefix_length);
+    r.prefix_length = prefix_length;
+    r.next_hop = next_hop;
+    r.interface_num = interface_num;
+    */
+    routing_table.push_back(r);
+}
+
+uint32_t Router::get_prefix(uint32_t route_prefix, uint8_t prefix_length) {
+    if (prefix_length == 32) return route_prefix;
+    if (prefix_length == 0) return 0;
+    route_prefix = route_prefix >> (32 - prefix_length);
+    route_prefix = route_prefix << (32 - prefix_length);
+    return route_prefix;
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
-    DUMMY_CODE(dgram);
-    // Your code here.
+    // return (drop dgram) if dgram has no time left to live
+    if (dgram.header().ttl == 0 || dgram.header().ttl - 1 == 0) return;
+    uint32_t destination = dgram.header().dst;
+    Route best_route(0, 0, {}, 0);
+    bool route_found = false;
+
+    // go through routing_table to find the best route for the dgram
+    for (Route r : routing_table) {
+        if (get_prefix(destination, r._prefix_length) == r._prefix) {
+            route_found = true;
+            if (r._prefix_length >= best_route._prefix_length) {
+                best_route = r;
+            }
+        }
+    }
+    
+    // if no route found, drop dgram
+    if (route_found == false) return;
+
+    // decrement dgram's TTL
+    dgram.header().ttl -= 1;
+
+    // sends dgram to associated interface
+    if (best_route._next_hop.has_value()) {
+        //Address addr = best_route._next_hop;
+        interface(best_route._interface_num).send_datagram(dgram, best_route._next_hop.value());
+    } else {
+        interface(best_route._interface_num).send_datagram(dgram, Address::from_ipv4_numeric(destination));
+    }
+    
 }
 
 void Router::route() {
