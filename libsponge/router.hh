@@ -6,16 +6,20 @@
 #include <optional>
 #include <queue>
 
+/*
+ * Class Name: Route
+ * Description: Holds all information to specify a route in the routing table. Each Route holds
+ * a prefix, a prefix length, (optional) IP address of the next hop, and an interface number
+ * associated with that Route.
+ */
 class Route {
-    public: 
-        uint32_t _prefix;
-        uint8_t _prefix_length;
-        std::optional<Address> _next_hop;
-        size_t _interface_num;
-        Route(uint32_t route_prefix, uint8_t prefix_length, 
-              std::optional<Address> next_hop, size_t interface_num): 
-              _prefix(route_prefix), _prefix_length(prefix_length), _next_hop(next_hop), 
-              _interface_num(interface_num) {}
+  public:
+    uint32_t _prefix;
+    uint8_t _prefix_length;
+    std::optional<Address> _next_hop;
+    size_t _interface_num;
+    Route(uint32_t route_prefix, uint8_t prefix_length, std::optional<Address> next_hop, size_t interface_num)
+        : _prefix(route_prefix), _prefix_length(prefix_length), _next_hop(next_hop), _interface_num(interface_num) {}
 };
 
 //! \brief A wrapper for NetworkInterface that makes the host-side
@@ -61,8 +65,10 @@ class Router {
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
 
+    // vector holds all known routes in routing table
     std::vector<Route> routing_table{};
 
+    // returns a prefix with all non-significant bits set to 0
     uint32_t get_prefix(uint32_t route_prefix, uint8_t prefix_length);
 
   public:
